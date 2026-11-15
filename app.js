@@ -82,7 +82,8 @@ function dustySVG(defeated) {
     <circle cx="26" cy="30" r="3" fill="#cfc7da"/><circle cx="72" cy="74" r="2.5" fill="#cfc7da"/>
     ${eyes}${mouth}</g></svg>`;
 }
-function catSVG(x, body, mood, flip) {
+function catSVG(x, body, mood, flip, chest, line = 'none') {
+  const st = line === 'none' ? '' : ` stroke="${line}" stroke-width="1.2"`;
   const eyes = mood === 'happy' ? `<path d="M${x - 9} 33q4-4 8 0M${x + 1} 33q4-4 8 0" stroke="#1f2a27" stroke-width="2.2" fill="none" stroke-linecap="round"/>`
     : `<circle cx="${x - 5}" cy="32" r="2.4" fill="#1f2a27"/><circle cx="${x + 5}" cy="32" r="2.4" fill="#1f2a27"/>`;
   const mouth = mood === 'happy' ? `<path d="M${x - 4} 40q4 4 8 0" stroke="#1f2a27" stroke-width="2" fill="none" stroke-linecap="round"/>`
@@ -90,16 +91,20 @@ function catSVG(x, body, mood, flip) {
     : `<path d="M${x - 4} 43q4-4 8 0" stroke="#1f2a27" stroke-width="2" fill="none" stroke-linecap="round"/>`;
   const tear = mood === 'sad' ? `<path d="M${x + 7} 35q2 4 0 6q-2-2 0-6z" fill="#7cc0e8"/>` : '';
   const tail = flip ? `M${x - 14} 50q-14-2-12-16` : `M${x + 14} 50q14-2 12-16`;
-  return `<path d="${tail}" stroke="${body}" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="${x}" cy="50" rx="15" ry="9" fill="${body}"/>
-    <path d="M${x - 15} 26l3-14 9 8zM${x + 15} 26l-3-14-9 8z" fill="${body}"/>
-    <circle cx="${x}" cy="34" r="15" fill="${body}"/>
+  const tailLine = line === 'none' ? '' : `<path d="${tail}" stroke="${line}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+  return `${tailLine}<path d="${tail}" stroke="${body}" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="${x}" cy="50" rx="15" ry="9" fill="${body}"${st}/>
+    ${chest ? `<ellipse cx="${x}" cy="49" rx="7" ry="7" fill="${chest}"/>` : ''}
+    <path d="M${x - 15} 26l3-14 9 8zM${x + 15} 26l-3-14-9 8z" fill="${body}"${st}/>
+    <path d="M${x - 13} 24l2-8 5 5zM${x + 13} 24l-2-8-5 5z" fill="#f2b8b8"/>
+    <circle cx="${x}" cy="34" r="15" fill="${body}"${st}/>
+    ${chest ? `<path d="M${x - 6} 40q6 8 12 0q-6 3-12 0z" fill="${chest}"/>` : ''}
     <path d="M${x - 1.5} 37h3l-1.5 2z" fill="#e58b8b"/>
     <path d="M${x - 8} 38h-9M${x - 8} 40l-8 3M${x + 8} 38h9M${x + 8} 40l8 3" stroke="#1f2a27" stroke-width=".8" opacity=".5"/>
     ${eyes}${mouth}${tear}`;
 }
 function catsSVG(mood) {
-  return `<svg viewBox="0 0 104 60">${catSVG(30, '#9aa3ad', mood, true)}${catSVG(74, '#e3a25b', mood, false)}</svg>`;
+  return `<svg viewBox="0 0 104 60">${catSVG(30, '#fbfaf6', mood, true, null, '#cfc6b4')}${catSVG(74, '#e8913f', mood, false, '#fffaf0')}</svg>`;
 }
 
 /* ============ Vistas ============ */
