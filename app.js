@@ -117,7 +117,7 @@ function render() {
   else if (v.startsWith('room:')) body = viewRoom(v.slice(5));
   else if (v === 'hist') body = viewHist();
   const tab = v.startsWith('room:') ? 'casa' : v;
-  $app.innerHTML = `<div class="shell">
+  $app.innerHTML = `<div class="minibar" id="minibar"><span>${S.title || ''}</span></div><div class="shell">
     ${isDemo ? `<div class="demo-banner">Modo demo: los datos se guardan solo en este teléfono. Eres <b>${esc(memberName(store.me))}</b> (cámbialo en ⚙️).</div>` : ''}
     ${body}</div>
     <div class="tabbar"><nav>
@@ -125,10 +125,12 @@ function render() {
         `<button data-act="tab" data-v="${k}" class="${tab === k ? 'on' : ''}"><span class="ico">${i}</span>${l}</button>`).join('')}
     </nav></div>`;
   S.hit = false;
+  onScroll();
   checkVictory();
 }
 
 function topbar(title, sub) {
+  S.title = title;
   return `<div class="topbar"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div>
     <button class="icon-btn" data-act="settings" aria-label="Ajustes">⚙️</button></div>`;
 }
@@ -499,6 +501,14 @@ window.addEventListener('popstate', e => {
   S.view = e.state?.view || 'finde'; render();
 });
 history.replaceState({ view: S.view }, '');
+
+function onScroll() {
+  const mb = document.getElementById('minibar'); if (!mb) return;
+  const h1 = $app.querySelector('.topbar h1');
+  const limit = h1 ? h1.getBoundingClientRect().bottom + scrollY - 10 : 60;
+  mb.classList.toggle('show', scrollY > limit);
+}
+addEventListener('scroll', onScroll, { passive: true });
 
 /* ============ Arranque ============ */
 async function reload() {
