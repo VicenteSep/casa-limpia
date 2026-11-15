@@ -104,7 +104,7 @@ function catSVG(x, body, mood, flip, chest, line = 'none') {
     ${eyes}${mouth}${tear}`;
 }
 function catsSVG(mood) {
-  return `<svg viewBox="0 0 104 60">${catSVG(30, '#fbfaf6', mood, true, null, '#cfc6b4')}${catSVG(74, '#e8913f', mood, false, '#fffaf0')}</svg>`;
+  return `<svg viewBox="0 0 104 60" role="img" aria-label="Auki (blanco) y Antu (naranja)">${catSVG(30, '#fbfaf6', mood, true, null, '#cfc6b4')}${catSVG(74, '#e8913f', mood, false, '#fffaf0')}</svg>`;
 }
 
 /* ============ Vistas ============ */
@@ -139,7 +139,7 @@ function viewFinde() {
   const hpPct = st.max ? (st.pendPts / st.max) * 100 : 0;
   const h = houseHealth();
   const mood = h >= .7 ? 'happy' : h >= .45 ? 'meh' : 'sad';
-  const moodTxt = { happy: 'Los gatos están felices', meh: 'Los gatos miran el polvo con sospecha', sad: 'Los gatos están estornudando' }[mood];
+  const moodTxt = { happy: 'Auki y Antu están felices', meh: 'Auki y Antu miran el polvo con sospecha', sad: 'Auki y Antu están estornudando' }[mood];
   const sat = thisWeekendSat();
   const sub = dow(today()) >= 5 ? `¡Es finde! ${fmtShort(today())}` : `Próximo finde: ${fmtShort(sat)}`;
 
