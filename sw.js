@@ -1,5 +1,5 @@
 // Service worker: funciona sin conexión y recibe los avisos del finde.
-const CACHE = 'casa-limpia-v1';
+const CACHE = 'casa-limpia-v2';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'store.js', 'dates.js', 'seed.js', 'config.js',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

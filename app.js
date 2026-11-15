@@ -25,7 +25,12 @@ function dirtOf(t) {
   const start = addDays(t.next_due, -I);
   return Math.max(0, diffDays(start, today()) / I);
 }
-function healthOf(t) { const d = dirtOf(t); return d <= 1 ? 1 - 0.4 * d : Math.max(0, 0.6 - 0.6 * (d - 1)); }
+function healthOf(t) {
+  const late = diffDays(t.next_due, today());           // días de atraso (>0 = atrasada)
+  if (late < 0) return 1;                               // aún no toca → limpia
+  if (late === 0 || t.next_due >= mondayOf(today())) return 0.85; // toca este finde
+  return Math.max(0, 0.7 - 0.7 * late / intervalDays(t.every_n, t.every_unit));
+}
 const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 1;
 function houseHealth(tasks = S.data.tasks) { return avg(tasks.map(healthOf)); }
 
@@ -296,11 +301,39 @@ function toast(msg, actLabel, act) {
 
 /* ============ Hojas (formularios) ============ */
 function openSheet(html, onMount) {
-  $sheet.innerHTML = `<div class="backdrop" data-close></div><div class="sheet"><div class="sheet-inner"><div class="grab"></div>${html}</div></div>`;
-  $sheet.querySelector('[data-close]').onclick = closeSheet;
+  const already = !!$sheet.innerHTML;
+  $sheet.innerHTML = `<div class="backdrop" data-close></div><div class="sheet"><div class="sheet-inner">
+    <div class="sheet-head"><div class="grab"></div><button class="sheet-x" data-close aria-label="Cerrar">✕</button></div>${html}</div></div>`;
+  $sheet.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeSheet());
+  if (!already) history.pushState({ view: S.view, sheet: true }, '');
+  enableSwipeDown($sheet.querySelector('.sheet'));
   onMount?.($sheet.querySelector('.sheet'));
 }
-function closeSheet() { $sheet.innerHTML = ''; }
+function closeSheet(fromPop) {
+  if (!$sheet.innerHTML) return;
+  $sheet.innerHTML = '';
+  if (!fromPop && history.state?.sheet) history.back();
+}
+function enableSwipeDown(sheet) {
+  let y0 = null, dy = 0, dragging = false;
+  sheet.addEventListener('touchstart', e => {
+    if (sheet.scrollTop > 0 || e.target.closest('input,select,textarea')) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0; dragging = false;
+  }, { passive: true });
+  sheet.addEventListener('touchmove', e => {
+    if (y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if (!dragging && dy > 8 && sheet.scrollTop <= 0) dragging = true;
+    if (dragging) { e.preventDefault(); sheet.style.transition = 'none'; sheet.style.transform = `translateY(${Math.max(0, dy)}px)`; }
+  }, { passive: false });
+  sheet.addEventListener('touchend', () => {
+    if (!dragging) { y0 = null; return; }
+    sheet.style.transition = 'transform .2s ease';
+    if (dy > 90) { sheet.style.transform = 'translateY(100%)'; setTimeout(() => closeSheet(), 180); }
+    else sheet.style.transform = '';
+    y0 = null; dragging = false;
+  });
+}
 
 function assigneeSeg(name, value, withAuto, autoLabel) {
   const opts = [...(withAuto ? [['', autoLabel]] : [['', 'Nadie']]), ...sortedMembers().map(m => [m.slug, m.name])];
@@ -394,7 +427,7 @@ function roomSheet(r) {
     };
     root.querySelector('[data-x=delete]')?.addEventListener('click', async () => {
       if (!confirm(`¿Eliminar "${r.name}" y todas sus tareas?`)) return;
-      closeSheet(); await store.deleteRoom(r.id); S.view = 'casa'; reload();
+      closeSheet(); await store.deleteRoom(r.id); history.replaceState({ view: 'casa' }, ''); S.view = 'casa'; reload();
     });
   });
 }
@@ -437,11 +470,11 @@ async function enablePush() {
 $app.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const { act, id } = el.dataset;
-  if (act === 'tab') { S.view = el.dataset.v; render(); scrollTo(0, 0); }
+  if (act === 'tab') go(el.dataset.v, false);
   else if (act === 'done') { el.classList.add('done'); setTimeout(() => completeTask(id), 180); }
   else if (act === 'open') taskSheet(S.data.tasks.find(t => t.id === id));
   else if (act === 'assign') { const t = S.data.tasks.find(x => x.id === id); t.assignee = el.dataset.m; render(); store.updateTask(id, { assignee: el.dataset.m }).catch(err => toast(err.message)); }
-  else if (act === 'room') { S.view = 'room:' + id; render(); scrollTo(0, 0); }
+  else if (act === 'room') go('room:' + id, true);
   else if (act === 'new-room') roomSheet();
   else if (act === 'edit-room') roomSheet(S.data.rooms.find(r => r.id === id));
   else if (act === 'new-task') taskSheet(null, el.dataset.room);
@@ -449,6 +482,18 @@ $app.addEventListener('click', e => {
   else if (act === 'toggle-done') { S.showDone = !S.showDone; render(); }
   else if (act === 'toggle-soon') { S.showSoon = !S.showSoon; render(); }
 });
+
+function go(view, push) {
+  if (view === S.view) return;
+  if (S.view.startsWith('room:') && view === 'casa' && history.state?.view === S.view) { history.back(); return; }
+  push ? history.pushState({ view }, '') : history.replaceState({ view }, '');
+  S.view = view; render(); scrollTo(0, 0);
+}
+window.addEventListener('popstate', e => {
+  if ($sheet.innerHTML) { closeSheet(true); if (!e.state?.sheet) return; }
+  S.view = e.state?.view || 'finde'; render();
+});
+history.replaceState({ view: S.view }, '');
 
 /* ============ Arranque ============ */
 async function reload() {
