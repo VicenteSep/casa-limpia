@@ -9,6 +9,9 @@ on:
       mode:
         description: 'finde = mandar avisos · ping = solo despertar la BD'
         default: 'finde'
+      solo:
+        description: 'Mandar solo a (vicho / cami). Vacío = a los dos'
+        default: ''
 
 jobs:
   avisos:
@@ -25,6 +28,7 @@ jobs:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           APP_URL: ${{ secrets.APP_URL }}
+          SOLO: ${{ github.event.inputs.solo }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then

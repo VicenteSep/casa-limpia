@@ -42,6 +42,7 @@ const monday = (() => { const x = new Date(Date.UTC(y, m - 1, d)); x.setUTCDate(
 const special = tk => days(tk) > 7 || tk.next_due < monday;
 
 for (const mem of members) {
+  if (process.env.SOLO && process.env.SOLO.trim().toLowerCase() !== mem.slug) continue;
   const all = tasks.filter(tk => who(tk) === mem.slug);
   const mine = all.filter(special).sort((a, b) => a.next_due.localeCompare(b.next_due));
   const label = tk => `${tk.name} (${roomById[tk.room_id]?.name ?? ''})${tk.next_due < monday ? ' ⚠️' : ''}`;
