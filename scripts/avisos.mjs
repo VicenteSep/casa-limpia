@@ -49,9 +49,7 @@ for (const mem of members) {
   const title = mine.length
     ? `${mem.name}, este finde además te toca 🧹`
     : `${mem.name}, este finde solo lo de siempre ✨`;
-  let body = mine.length ? list : 'Nada especial esta semana.';
-  const unSpecial = unassigned.filter(special);
-  if (unSpecial.length) body += `\nPor repartir: ${unSpecial.slice(0, 4).map(label).join(', ')}${unSpecial.length > 4 ? ` y ${unSpecial.length - 4} más` : ''}.`;
+  const body = mine.length ? list : 'Nada especial esta semana.';
 
   const mySubs = subs.filter(s => s.member_slug === mem.slug);
   for (const s of mySubs) {
