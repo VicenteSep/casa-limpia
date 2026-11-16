@@ -36,16 +36,22 @@ const unassigned = tasks.filter(tk => !who(tk));
 
 webpush.setVapidDetails('mailto:avisos@casa-limpia.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+// Solo lo "particular" de la semana: tareas de más de 1 semana, o semanales que quedaron atrasadas.
+const days = tk => tk.every_n * ({ day: 1, week: 7, month: 30 }[tk.every_unit] || 7);
+const monday = (() => { const x = new Date(Date.UTC(y, m - 1, d)); x.setUTCDate(x.getUTCDate() - (x.getUTCDay() + 6) % 7); return x.toISOString().slice(0, 10); })();
+const special = tk => days(tk) > 7 || tk.next_due < monday;
+
 for (const mem of members) {
-  const mine = tasks.filter(tk => who(tk) === mem.slug)
-    .sort((a, b) => a.next_due.localeCompare(b.next_due));
-  const label = tk => `${tk.name} (${roomById[tk.room_id]?.name ?? ''})`;
-  const list = mine.slice(0, 5).map(label).join(', ') + (mine.length > 5 ? ` y ${mine.length - 5} más` : '');
+  const all = tasks.filter(tk => who(tk) === mem.slug);
+  const mine = all.filter(special).sort((a, b) => a.next_due.localeCompare(b.next_due));
+  const label = tk => `${tk.name} (${roomById[tk.room_id]?.name ?? ''})${tk.next_due < monday ? ' ⚠️' : ''}`;
+  const list = mine.slice(0, 6).map(label).join(', ') + (mine.length > 6 ? ` y ${mine.length - 6} más` : '');
   const title = mine.length
-    ? `${mem.name}, este finde te toca ${mine.length === 1 ? '1 tarea' : `${mine.length} tareas`} 🧹`
-    : `${mem.name}, este finde no tienes nada asignado 🎉`;
-  let body = mine.length ? list : 'Dusty no tiene nada contra ti… por ahora.';
-  if (unassigned.length) body += `\nY hay ${unassigned.length} sin asignar para repartir.`;
+    ? `${mem.name}, este finde además te toca 🧹`
+    : `${mem.name}, este finde solo lo de siempre ✨`;
+  let body = mine.length ? list : 'Nada especial esta semana.';
+  const unSpecial = unassigned.filter(special);
+  if (unSpecial.length) body += `\nPor repartir: ${unSpecial.slice(0, 4).map(label).join(', ')}${unSpecial.length > 4 ? ` y ${unSpecial.length - 4} más` : ''}.`;
 
   const mySubs = subs.filter(s => s.member_slug === mem.slug);
   for (const s of mySubs) {
