@@ -2,12 +2,17 @@ name: Avisos del finde
 
 on:
   schedule:
-    - cron: '7 8 * * 6'    # sábado ~09:07 en Madrid (invierno) / 10:07 (verano): "este finde te toca…"
+    # Sábado: varios intentos, porque GitHub a veces retrasa o se salta los programados.
+    # Solo se envía UNA vez por semana (el primero que funcione); los demás se saltan.
+    - cron: '7 7 * * 6'    # ~08:07 Madrid (invierno)
+    - cron: '37 8 * * 6'   # ~09:37
+    - cron: '7 11 * * 6'   # ~12:07
+    - cron: '7 15 * * 6'   # ~16:07
     - cron: '17 12 * * 3'  # miércoles: solo despierta a Supabase para que no se pause
-  workflow_dispatch:        # botón "Run workflow" para probar a mano
+  workflow_dispatch:        # botón "Run workflow" para probar a mano (siempre envía)
     inputs:
       mode:
-        description: 'finde = mandar avisos · ping = solo despertar la BD'
+        description: 'finde = mandar avisos · ping = solo despertar la BD · marcar = dar la semana por avisada sin enviar'
         default: 'finde'
       solo:
         description: 'Mandar solo a (vicho / cami). Vacío = a los dos'
@@ -17,11 +22,36 @@ jobs:
   avisos:
     runs-on: ubuntu-latest
     steps:
+      - name: Decidir qué hacer
+        id: plan
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "17 12 * * 3" ]; then MODE=ping; else MODE=finde; fi
+          fi
+          WEEK=$(TZ=Europe/Madrid date -d "$(TZ=Europe/Madrid date +%F) -$(( $(TZ=Europe/Madrid date +%u) - 1 )) days" +%F)
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "week=$WEEK" >> "$GITHUB_OUTPUT"
+          echo "Modo: $MODE · semana: $WEEK"
+
+      - name: ¿Ya se envió esta semana?
+        id: sent
+        if: github.event_name == 'schedule' && steps.plan.outputs.mode == 'finde'
+        uses: actions/cache/restore@v4
+        with:
+          path: .aviso-enviado
+          key: aviso-enviado-${{ steps.plan.outputs.week }}
+          lookup-only: true
+
       - uses: actions/checkout@v4
+        if: steps.sent.outputs.cache-hit != 'true'
       - uses: actions/setup-node@v4
+        if: steps.sent.outputs.cache-hit != 'true'
         with: { node-version: 22 }
       - run: npm install --no-save --no-package-lock web-push@3 @supabase/supabase-js@2
+        if: steps.sent.outputs.cache-hit != 'true'
       - name: Enviar
+        if: steps.sent.outputs.cache-hit != 'true' && steps.plan.outputs.mode != 'marcar'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -29,9 +59,13 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           APP_URL: ${{ secrets.APP_URL }}
           SOLO: ${{ github.event.inputs.solo }}
-        run: |
-          MODE="${{ github.event.inputs.mode }}"
-          if [ -z "$MODE" ]; then
-            if [ "${{ github.event.schedule }}" = "17 12 * * 3" ]; then MODE=ping; else MODE=finde; fi
-          fi
-          node scripts/avisos.mjs "$MODE"
+        run: node scripts/avisos.mjs "${{ steps.plan.outputs.mode }}"
+
+      - name: Marcar semana como enviada
+        if: (steps.plan.outputs.mode == 'finde' || steps.plan.outputs.mode == 'marcar') && steps.sent.outputs.cache-hit != 'true' && github.event.inputs.solo == ''
+        run: echo "${{ steps.plan.outputs.week }}" > .aviso-enviado
+      - uses: actions/cache/save@v4
+        if: (steps.plan.outputs.mode == 'finde' || steps.plan.outputs.mode == 'marcar') && steps.sent.outputs.cache-hit != 'true' && github.event.inputs.solo == ''
+        with:
+          path: .aviso-enviado
+          key: aviso-enviado-${{ steps.plan.outputs.week }}
